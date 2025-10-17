@@ -4,7 +4,7 @@ ARG BUILD_CONTEXT="build-context"
 ARG UID=worker
 ARG GID=worker
 # renovate: pypi: unoserver
-ARG VERSION_UNOSERVER=3.2
+ARG VERSION_UNOSERVER=3.5.dev0+fork.1
 
 LABEL org.opencontainers.image.title="unoserver-docker"
 LABEL org.opencontainers.image.description="Container image that contains unoserver and libreoffice including large set of fonts for file format conversions"
@@ -41,7 +41,7 @@ RUN apk add --no-cache \
 RUN rm -rf /var/cache/apk/* /tmp/*
 
 # https://github.com/unoconv/unoserver/
-RUN pip install --break-system-packages -U unoserver==${VERSION_UNOSERVER}
+RUN pip install --break-system-packages -U unoserver==${VERSION_UNOSERVER} --index-url https://nexus.sina-cluster.com:9081/repository/pypi-all/simple
 
 # setup supervisor
 COPY --chown=${UID}:${GID} ${BUILD_CONTEXT} /
