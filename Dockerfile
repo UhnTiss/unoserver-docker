@@ -1,11 +1,12 @@
-FROM eclipse-temurin:24.0.1_9-jdk-alpine-3.21
+FROM eclipse-temurin:24.0.2_12-jdk-noble
 
-ARG BUILD_CONTEXT="build-context"
+ARG BUILD_CONTEXT="build-context" 
 ARG UID=worker
 ARG GID=worker
-# renovate: pypi: unoserver
+ARG USER_UID=1001  # Andere UID verwenden (statt 1000)
 ARG VERSION_UNOSERVER=3.5.dev0+fork.1
 
+# Metadaten
 LABEL org.opencontainers.image.title="unoserver-docker"
 LABEL org.opencontainers.image.description="Container image that contains unoserver and libreoffice including large set of fonts for file format conversions"
 LABEL org.opencontainers.image.licenses="MIT"
@@ -15,46 +16,40 @@ LABEL org.opencontainers.image.url="https://github.com/unoconv/unoserver-docker"
 
 WORKDIR /
 
-RUN addgroup -S ${GID} && adduser -S ${UID} -G ${GID}
+# Debian-kompatible Nutzer- und Gruppenerstellung
+RUN useradd --system --create-home --uid ${USER_UID} --gid 0 ${UID}
 
-RUN apk add --no-cache \
-    bash curl \
-    py3-pip \
-    libreoffice \
-    supervisor
+# Alles in einem RUN-Befehl für kleineres Image
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg unzip file \
+        python3 python3-pip supervisor net-tools \
+        libreoffice libreoffice-writer libreoffice-java-common \
+        fonts-noto fonts-noto-cjk fonts-noto-extra \
+        fonts-dejavu-core fonts-liberation fonts-freefont-ttf \
+        xfonts-terminus fonts-font-awesome \
+        fonts-hack-ttf fonts-inconsolata fonts-mononoki fonts-open-sans \
+        fontconfig && \
+    fc-cache -fv && \
+    # Aufräumen, um Imagegröße zu reduzieren
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# fonts - https://wiki.alpinelinux.org/wiki/Fonts
-RUN apk add --no-cache \
-    font-noto font-noto-cjk font-noto-extra \
-    terminus-font \
-    ttf-font-awesome \
-    ttf-dejavu \
-    ttf-freefont \
-    ttf-hack \
-    ttf-inconsolata \
-    ttf-liberation \
-    ttf-mononoki  \
-    ttf-opensans   \
-    fontconfig && \
-    fc-cache -f
+# UNOserver Installation
+RUN python3 -m pip install --break-system-packages \
+    unoserver==${VERSION_UNOSERVER} \
+    --index-url https://nexus.sina-cluster.com:9081/repository/pypi-all/simple
 
-RUN rm -rf /var/cache/apk/* /tmp/*
-
-# https://github.com/unoconv/unoserver/
-RUN pip install --break-system-packages -U unoserver==${VERSION_UNOSERVER} --index-url https://nexus.sina-cluster.com:9081/repository/pypi-all/simple
-
-# setup supervisor
-COPY --chown=${UID}:${GID} ${BUILD_CONTEXT} /
-RUN chmod +x entrypoint.sh && \
-    #    mkdir -p /var/log/supervisor && \
-    #    chown ${UID}:${GID} /var/log/supervisor && \
-    #    mkdir -p /var/run && \
+# Supervisor und Entrypoint einrichten
+COPY --chown=${UID}:0 ${BUILD_CONTEXT} /
+RUN chmod +x /entrypoint.sh && \
+    mkdir -p /var/run && \
     chown -R ${UID}:0 /run && \
     chmod -R g=u /run
 
 USER ${UID}
-WORKDIR /home/worker
-ENV HOME="/home/worker"
+WORKDIR /home/${UID}
+ENV HOME="/home/${UID}"
 
 VOLUME ["/data"]
 EXPOSE 2003
