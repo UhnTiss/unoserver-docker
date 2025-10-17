@@ -23,7 +23,7 @@ RUN useradd --system --create-home --uid ${USER_UID} --gid 0 ${UID}
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg unzip file \
-        python3 python3-pip supervisor net-tools \
+        python3 python3-pip python3.12-venv supervisor net-tools \
         libreoffice libreoffice-writer libreoffice-java-common \
         fonts-noto fonts-noto-cjk fonts-noto-extra \
         fonts-dejavu-core fonts-liberation fonts-freefont-ttf \
