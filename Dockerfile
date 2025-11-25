@@ -4,7 +4,7 @@ ARG BUILD_CONTEXT="build-context"
 ARG UID=worker
 ARG GID=worker
 ARG USER_UID=1001  # Andere UID verwenden (statt 1000)
-ARG VERSION_UNOSERVER=3.5.dev0+fork.1
+ARG VERSION_UNOSERVER=3.6
 
 # Metadaten
 LABEL org.opencontainers.image.title="unoserver-docker"
@@ -24,21 +24,23 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates curl gnupg unzip file \
         python3 python3-pip python3.12-venv supervisor net-tools \
-        libreoffice libreoffice-writer libreoffice-java-common \
+        libreoffice libreoffice-writer libreoffice-java-common 
+# Fonts
+RUN apt-get install -y --no-install-recommends \
         fonts-noto fonts-noto-cjk fonts-noto-extra \
         fonts-dejavu-core fonts-liberation fonts-freefont-ttf \
         xfonts-terminus fonts-font-awesome \
         fonts-hack-ttf fonts-inconsolata fonts-mononoki fonts-open-sans \
         fontconfig && \
-    fc-cache -fv && \
-    # Aufräumen, um Imagegröße zu reduzieren
-    apt-get clean && \
+    fc-cache -fv
+
+# Aufräumen, um Imagegröße zu reduzieren
+RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # UNOserver Installation
 RUN python3 -m pip install --break-system-packages \
-    unoserver==${VERSION_UNOSERVER} \
-    --index-url https://nexus.sina-cluster.com:9081/repository/pypi-all/simple
+    unoserver==${VERSION_UNOSERVER}
 
 # Supervisor und Entrypoint einrichten
 COPY --chown=${UID}:0 ${BUILD_CONTEXT} /
